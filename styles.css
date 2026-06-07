@@ -1,0 +1,694 @@
+/* ==========================================================================
+   Azure App Service — Performance Testing Suite
+   Theme: Azure Portal / Fluent UI
+   ========================================================================== */
+
+:root {
+    /* Fluent / Azure portal palette */
+    --azure-blue:           #0078D4;
+    --azure-blue-hover:     #106EBE;
+    --azure-blue-pressed:   #005A9E;
+    --azure-blue-light:     #DEECF9;
+    --azure-blue-lighter:   #EFF6FC;
+
+    --neutral-bg:           #FAF9F8;
+    --neutral-surface:      #FFFFFF;
+    --neutral-hover:        #F3F2F1;
+    --neutral-border:       #EDEBE9;
+    --neutral-border-strong:#D2D0CE;
+    --neutral-divider:      #E1DFDD;
+
+    --text-primary:         #323130;
+    --text-secondary:       #605E5C;
+    --text-tertiary:        #8A8886;
+    --text-on-accent:       #FFFFFF;
+
+    --accent-success:       #107C10;
+    --accent-success-bg:    #DFF6DD;
+    --accent-warning:       #C19C00;
+    --accent-warning-bg:    #FFF4CE;
+    --accent-error:         #A4262C;
+    --accent-error-bg:      #FDE7E9;
+    --accent-critical:      #D13438;
+    --accent-info:          #0078D4;
+
+    --shadow-card:          0 1.6px 3.6px rgba(0,0,0,0.10), 0 0.3px 0.9px rgba(0,0,0,0.07);
+    --shadow-card-hover:    0 6.4px 14.4px rgba(0,0,0,0.13), 0 1.2px 3.6px rgba(0,0,0,0.10);
+    --shadow-flyout:        0 25.6px 57.6px rgba(0,0,0,0.22), 0 4.8px 14.4px rgba(0,0,0,0.18);
+
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+
+    --font-stack: "Segoe UI", "Segoe UI Variable Display", -apple-system,
+                  BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-stack);
+    background: var(--neutral-bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.4;
+}
+
+a {
+    color: var(--azure-blue);
+    text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+/* ==========================================================================
+   Top App Bar (Azure portal-style)
+   ========================================================================== */
+.navbar {
+    background: var(--azure-blue);
+    color: var(--text-on-accent);
+    border-bottom: 1px solid var(--azure-blue-pressed);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+
+.nav-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-on-accent);
+    letter-spacing: 0.2px;
+}
+
+.brand-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.brand-text {
+    font-weight: 600;
+}
+
+.nav-button {
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.12);
+    color: var(--text-on-accent);
+    border: 1px solid rgba(255,255,255,0.32);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.nav-button:hover {
+    background: rgba(255,255,255,0.22);
+    text-decoration: none;
+}
+
+/* ==========================================================================
+   Hero / Page header
+   ========================================================================== */
+.hero {
+    background: var(--neutral-surface);
+    border-bottom: 1px solid var(--neutral-border);
+    padding: 28px 24px 24px;
+}
+
+.hero-content {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.hero-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+}
+
+.hero-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 900px;
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   Main / content shell
+   ========================================================================== */
+.main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.content-wrapper {
+    background: var(--neutral-surface);
+    border: 1px solid var(--neutral-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+}
+
+/* ==========================================================================
+   Pivot / tabs (Azure portal pivot style)
+   ========================================================================== */
+.tab-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    background: var(--neutral-surface);
+    border-bottom: 1px solid var(--neutral-border);
+    padding: 0 16px;
+}
+
+.tab-button {
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color .15s ease, background-color .15s ease;
+    position: relative;
+    font-family: var(--font-stack);
+}
+
+.tab-button:hover {
+    color: var(--text-primary);
+    background: var(--neutral-hover);
+}
+
+.tab-button.active {
+    color: var(--azure-blue);
+    background: transparent;
+}
+
+.tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--azure-blue);
+}
+
+/* ==========================================================================
+   Tab content
+   ========================================================================== */
+.tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn .18s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.test-section { max-width: 1400px; margin: 0 auto; }
+
+.section-header {
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.section-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 900px;
+}
+
+/* ==========================================================================
+   Test cards (tile-grid like Azure portal blade)
+   ========================================================================== */
+.test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.test-card {
+    background: var(--neutral-surface);
+    border: 1px solid var(--neutral-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+}
+
+.test-card:hover {
+    border-color: var(--azure-blue);
+    box-shadow: var(--shadow-card-hover);
+}
+
+.card-icon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border-radius: var(--radius-sm);
+    background: var(--azure-blue-light);
+    color: var(--azure-blue);
+}
+
+.card-icon.crash   { background: var(--accent-error-bg);     color: var(--accent-error); }
+.card-icon.cpu     { background: var(--accent-warning-bg);   color: #8A6116; }
+.card-icon.memory  { background: var(--azure-blue-light);    color: var(--azure-blue); }
+.card-icon.error   { background: var(--accent-error-bg);     color: var(--accent-error); }
+.card-icon.delay   { background: #F4ECF7;                    color: #5C2E91; }
+.card-icon.ok      { background: var(--accent-success-bg);   color: var(--accent-success); }
+.card-icon.app     { background: #FFF4CE;                    color: #8A6116; }
+
+.test-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.test-card p {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-bottom: 16px;
+    flex: 1 1 auto;
+}
+
+/* Primary button (Azure portal command bar primary) */
+.test-button {
+    width: 100%;
+    padding: 6px 16px;
+    min-height: 32px;
+    background: var(--azure-blue);
+    color: var(--text-on-accent);
+    border: 1px solid var(--azure-blue);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color .12s ease, border-color .12s ease;
+    font-family: var(--font-stack);
+    text-align: center;
+    line-height: 1.4;
+}
+
+.test-button:hover {
+    background: var(--azure-blue-hover);
+    border-color: var(--azure-blue-hover);
+    text-decoration: none;
+    color: var(--text-on-accent);
+}
+
+.test-button:active {
+    background: var(--azure-blue-pressed);
+    border-color: var(--azure-blue-pressed);
+}
+
+.test-button.danger {
+    background: var(--accent-critical);
+    border-color: var(--accent-critical);
+}
+.test-button.danger:hover { background: #B12A2D; border-color: #B12A2D; }
+
+.test-button.secondary {
+    background: var(--neutral-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--neutral-border-strong);
+}
+.test-button.secondary:hover {
+    background: var(--neutral-hover);
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Status panel (inline Azure-portal style notification)
+   ========================================================================== */
+.status-panel {
+    background: var(--azure-blue-lighter);
+    border: 1px solid var(--azure-blue-light);
+    border-left: 4px solid var(--azure-blue);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    margin: 16px 24px 0;
+    box-shadow: var(--shadow-card);
+}
+
+.status-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.status-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.status-message { flex: 1; min-width: 0; }
+
+.status-message h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.status-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+.status-text > p { margin: 0; }
+
+.back-button {
+    padding: 4px 12px;
+    min-height: 28px;
+    background: var(--neutral-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--neutral-border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .12s ease;
+    font-family: var(--font-stack);
+}
+.back-button:hover { background: var(--neutral-hover); }
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+.footer {
+    text-align: center;
+    padding: 16px 24px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    border-top: 1px solid var(--neutral-border);
+    background: var(--neutral-surface);
+    margin-top: 24px;
+}
+.footer p { max-width: 900px; margin: 0 auto; }
+
+/* ==========================================================================
+   Inner sub-page (Slow10 / Slow60 / FastResponse / HealthCheck) shared
+   ========================================================================== */
+.container {
+    max-width: 800px;
+    margin: 32px auto;
+    padding: 24px;
+    background: var(--neutral-surface);
+    border: 1px solid var(--neutral-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+}
+
+.container h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.message-label {
+    display: inline-block;
+    margin: 8px 0 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   HTTP 500 / error display
+   ========================================================================== */
+.error-display {
+    text-align: center;
+    padding: 32px 16px;
+    background: var(--accent-error-bg);
+    border: 1px solid #F1BBBC;
+    border-radius: var(--radius-md);
+    color: var(--accent-error);
+}
+
+.error-icon-large {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+.error-code {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--accent-critical);
+    line-height: 1;
+    margin-bottom: 8px;
+    letter-spacing: -1px;
+}
+
+.error-display h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.error-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 768px) {
+    .nav-container { padding: 0 12px; }
+    .hero { padding: 16px 12px; }
+    .hero-title { font-size: 22px; }
+    .main-content { padding: 12px; }
+    .tab-content { padding: 16px; }
+    .tab-button { padding: 10px 12px; font-size: 13px; }
+    .section-header h2 { font-size: 18px; }
+}
+
+/* ==========================================================================
+   Load Test form
+   ========================================================================== */
+.loadtest-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0 16px 0;
+}
+.loadtest-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 140px;
+    font-size: 13px;
+    color: #555;
+}
+.loadtest-field-wide {
+    flex: 2 1 280px;
+}
+.loadtest-field span {
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+.loadtest-input {
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+.loadtest-input:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
+/* ============================================================
+   Load Test - rich content inside the shared status banner
+   ============================================================ */
+.lt-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 12px 0;
+}
+.lt-target-code {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: #1f2328;
+    word-break: break-all;
+}
+.lt-result-tag {
+    flex-shrink: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: #57606a;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 3px 8px;
+    white-space: nowrap;
+}
+.lt-result-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #57606a;
+}
+
+.lt-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.lt-tile {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.lt-tile-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #57606a;
+}
+.lt-tile-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2328;
+    line-height: 1.1;
+}
+.lt-tile-sub {
+    font-size: 11px;
+    color: #57606a;
+}
+.lt-tile.lt-tile-success {
+    background: #dafbe1;
+    border-color: #aceebb;
+}
+.lt-tile.lt-tile-success .lt-tile-value { color: #1a7f37; }
+.lt-tile.lt-tile-fail {
+    background: #ffebe9;
+    border-color: #ffcecb;
+}
+.lt-tile.lt-tile-fail .lt-tile-value { color: #cf222e; }
+
+.lt-result-statuses {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e1e4e8;
+}
+.lt-status-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.lt-status-pill {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid;
+    background: #fff;
+}
+.lt-status-pill strong { font-weight: 700; }
+.lt-status-2xx { color: #1a7f37; border-color: #aceebb; background: #dafbe1; }
+.lt-status-3xx { color: #9a6700; border-color: #f7d34c; background: #fff8c5; }
+.lt-status-4xx { color: #9a6700; border-color: #f7d34c; background: #fff8c5; }
+.lt-status-5xx { color: #cf222e; border-color: #ffcecb; background: #ffebe9; }
+.lt-status-err { color: #6e7781; border-color: #d0d7de; background: #f6f8fa; }
+
+.lt-result-pending-note {
+    margin: 8px 0;
+    font-size: 13px;
+    color: #57606a;
+}
+.lt-result-kql {
+    background: #0d1117;
+    color: #e6edf3;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 0;
+}
