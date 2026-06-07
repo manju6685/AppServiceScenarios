@@ -85,8 +85,10 @@
     <Content Include="Global.asax" />
     <Content Include="HealthCheck.aspx" />
     <Content Include="Http500.aspx" />
+    <Content Include="NullRef.aspx" />
     <Content Include="Slow10.aspx" />
     <Content Include="Slow60.aspx" />
+    <Content Include="StackOverflow.aspx" />
     <Content Include="Styles.css" />
     <Content Include="Web.config" />
   </ItemGroup>
@@ -122,6 +124,13 @@
     <Compile Include="Http500.aspx.designer.cs">
       <DependentUpon>Http500.aspx</DependentUpon>
     </Compile>
+    <Compile Include="NullRef.aspx.cs">
+      <DependentUpon>NullRef.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="NullRef.aspx.designer.cs">
+      <DependentUpon>NullRef.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Slow10.aspx.cs">
       <DependentUpon>Slow10.aspx</DependentUpon>
@@ -136,6 +145,13 @@
     </Compile>
     <Compile Include="Slow60.aspx.designer.cs">
       <DependentUpon>Slow60.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="StackOverflow.aspx.cs">
+      <DependentUpon>StackOverflow.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="StackOverflow.aspx.designer.cs">
+      <DependentUpon>StackOverflow.aspx</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>

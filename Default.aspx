@@ -85,6 +85,18 @@
                                 <p>Rapidly consumes available memory</p>
                                 <asp:Button ID="Button3" runat="server" Text="Execute Test" OnClick="Button3_Click" CssClass="test-button danger" />
                             </div>
+                            <div class="test-card">
+                                <div class="card-icon crash">🧨</div>
+                                <h3>NullReferenceException</h3>
+                                <p>Dedicated page that throws an unhandled NRE on GET. Surfaces as HTTP 500 + App Insights ExceptionTelemetry.</p>
+                                <a href="NullRef.aspx" class="test-button danger" target="_blank">Open NullRef.aspx</a>
+                            </div>
+                            <div class="test-card">
+                                <div class="card-icon crash">☠️</div>
+                                <h3>StackOverflow → w3wp Crash</h3>
+                                <p>Dedicated page; <code>?go=1</code> recurses infinitely and crashes the w3wp worker process. Kills all in-flight requests on that instance.</p>
+                                <a href="StackOverflow.aspx" class="test-button danger" target="_blank">Open StackOverflow.aspx</a>
+                            </div>
                         </div>
                     </div>
                 </div>
