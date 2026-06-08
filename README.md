@@ -47,6 +47,7 @@ flowchart LR
      - [Option B1: Create a new App Service](#option-b1-create-a-new-app-service-from-vs-code)
      - [Option B2: Deploy to an existing App Service](#option-b2-deploy-to-an-existing-app-service-from-vs-code)
    - [3.C Deploy from the **Azure CLI** (any OS)](#3c-deploy-from-the-azure-cli-any-os)
+   - [3.D Drag-and-drop a zip into the **Kudu** ZipDeploy UI (any OS, no CLI)](#3d-drag-and-drop-a-zip-into-the-kudu-zipdeploy-ui-any-os-no-cli)
 6. [Step 4 — Validate the deployment](#step-4--validate-the-deployment)
 7. [Step 5 — Run the scenarios](#step-5--run-the-scenarios)
 8. [Step 6 — Open Diagnose-and-solve problems](#step-6--open-diagnose-and-solve-problems)
@@ -190,7 +191,7 @@ Open the folder in your editor of choice (`code .` for VS Code, `devenv AppServi
 
 ## Step 3 — Deploy to Azure App Service
 
-Pick **one** of the three paths below. All three deploy the same compiled output.
+Pick **one** of the four paths below. All four deploy the same compiled output.
 
 ### Which path should I pick?
 
@@ -199,6 +200,7 @@ flowchart TD
     Q{What do you have<br/>installed?} --> VS[Visual Studio 2022<br/>with ASP.NET workload]
     Q --> VSC[VS Code +<br/>Azure App Service extension]
     Q --> CLI[Just a terminal +<br/>Azure CLI]
+    Q --> BRW[Just a browser +<br/>a built zip file]
 
     VS --> VSDec{App Service<br/>already exists?}
     VSC --> VSCDec{App Service<br/>already exists?}
@@ -210,9 +212,10 @@ flowchart TD
     VSCDec -->|Yes| B2[Option B2<br/>Deploy to existing]
     CLIDec -->|No| C1[Option C1<br/>az webapp create + deploy]
     CLIDec -->|Yes| C2[Option C2<br/>az webapp deploy only]
+    BRW --> D[Option D<br/>Kudu ZipDeploy UI<br/>drag-and-drop in browser]
 
     classDef opt fill:#FFF4CE,stroke:#8A6D00,color:#000;
-    class A1,A2,B1,B2,C1,C2 opt;
+    class A1,A2,B1,B2,C1,C2,D opt;
 ```
 
 > **Tip**: The inline screenshots below are hotlinked from the official Microsoft Learn documentation (image © Microsoft, CC-BY 4.0). If you prefer your own screenshots, save PNGs into [`docs/images/`](docs/images/) and update the image URLs in this README.
@@ -375,6 +378,75 @@ Use this if you prefer scripting or are deploying from a CI/CD pipeline.
    ```powershell
    Start-Process "https://$app.azurewebsites.net/"
    ```
+
+---
+
+### 3.D Drag-and-drop a zip into the **Kudu** ZipDeploy UI (any OS, no CLI)
+
+Use this path when you already have a built `deploy.zip` and just want to push it from your browser — no Visual Studio, no VS Code extension, no Azure CLI. The App Service **must already exist** (this path does not create one).
+
+> **What is Kudu?** Kudu is the engineering site behind every Azure App Service. It is reachable at `https://<your-app>.scm.azurewebsites.net/` and exposes a built-in **ZipDeploy** drag-and-drop page for one-off deployments.
+
+#### Prerequisites
+
+- A built **`deploy.zip`** whose contents are the files that should land under `wwwroot` (not a folder _containing_ the files). Build it once with:
+  ```powershell
+  Compress-Archive -Path .\obj\Release\Package\PackageTmp\* -DestinationPath .\deploy.zip -Force
+  ```
+  See Step 2 / Option C1 above for the MSBuild step that produces `obj\Release\Package\PackageTmp\`.
+- An existing App Service.
+- **Basic authentication enabled** on the SCM endpoint, **or** you are signed in with an Entra ID account that has the [`Website Contributor`](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#website-contributor) role on the App Service.
+  > New App Services have basic auth disabled by default. To enable it:
+  > Portal → your App Service → **Configuration** → **General settings** → set **SCM Basic Auth Publishing Credentials** = **On** → **Save**.
+
+#### Steps
+
+1. Open the ZipDeploy UI in your browser:
+   ```
+   https://<your-app-name>.scm.azurewebsites.net/ZipDeployUI
+   ```
+   _(For this repo's demo site: <https://appservicescenarios.scm.azurewebsites.net/ZipDeployUI>)_
+
+2. If prompted, sign in:
+   - **Entra ID** (default) — you are silently redirected through `login.microsoftonline.com` and back. Make sure the account has the **Website Contributor** role.
+   - **Basic auth** — enter the publishing username and password from the App Service “Deployment Center → FTPS credentials” blade.
+
+3. The page shows a large drop zone labelled **“Drag a Zip file here to deploy”** with the file system contents underneath.
+
+4. **Drag your `deploy.zip` from File Explorer / Finder directly onto the drop zone.** The page immediately starts uploading and unpacking.
+
+5. Watch the inline status indicator. When you see `Deployment successful` (and the JSON status at `https://<your-app-name>.scm.azurewebsites.net/api/deployments/latest` shows `status: 4`), the site is live.
+
+6. Browse to `https://<your-app-name>.azurewebsites.net/` to validate.
+
+#### How this interacts with Run-From-Package
+
+If `WEBSITE_RUN_FROM_PACKAGE=1` is set on the App Service, the ZipDeploy UI still works — each drag-and-drop replaces the mounted package atomically and the file system stays read-only. If you ever need to compare uploaded zips, every push is also archived at:
+```
+https://<your-app-name>.scm.azurewebsites.net/api/vfs/data/SitePackages/
+```
+
+#### Equivalent REST call (for scripting later)
+
+The drag-and-drop UI is a thin wrapper around the ZipDeploy REST endpoint. If you want to do the same thing from a script without the Azure CLI, the underlying call is:
+```powershell
+$cred = Get-Credential   # publishing username + password
+Invoke-RestMethod `
+  -Uri "https://<your-app-name>.scm.azurewebsites.net/api/zipdeploy?isAsync=true" `
+  -Method POST `
+  -InFile .\deploy.zip `
+  -ContentType "application/zip" `
+  -Credential $cred
+```
+
+#### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Browser sits on `/ZipDeployUI` with a blank page and a 401 in DevTools | Basic auth is disabled and you are not signed in with Entra ID | Enable Basic Auth for the SCM site (see Prerequisites) or sign in with a Website Contributor account |
+| `Deployment failed: Conflicting deployment in progress` | Another zip is still unpacking | Wait ~30 s and retry, or cancel via `https://<app>.scm.azurewebsites.net/api/deployments/latest` |
+| Drag-and-drop does nothing | You dropped a folder, not a zip | Compress the folder first; you must drop a `.zip` file |
+| 500 errors after a successful deploy | The zip contained an extra wrapper folder | Re-zip with `Compress-Archive -Path .\obj\Release\Package\PackageTmp\* ...` (note the trailing `\*`) so files land directly under `wwwroot` |
 
 ---
 
