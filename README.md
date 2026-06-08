@@ -6,6 +6,28 @@
 [![Deploys to: Azure App Service](https://img.shields.io/badge/Deploys%20to-Azure%20App%20Service-0089D6)](https://learn.microsoft.com/azure/app-service/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 
+### Lab at a glance
+
+```mermaid
+flowchart LR
+    A([Clone repo]) --> B([Build locally])
+    B --> C{Pick a deploy path}
+    C -->|Visual Studio| D[Publish wizard]
+    C -->|VS Code| E[Azure App Service ext]
+    C -->|Terminal| F[Azure CLI]
+    D --> G([App running on<br/>Azure App Service])
+    E --> G
+    F --> G
+    G --> H([Reproduce scenarios:<br/>slow, crash, 500, leak])
+    H --> I([Open Diagnose<br/>and solve problems])
+    I --> J([Practice Auto Heal,<br/>App Insights, Kudu])
+
+    classDef start fill:#0078D4,stroke:#005A9E,color:#fff;
+    classDef done fill:#107C10,stroke:#0E6B0E,color:#fff;
+    class A,B start;
+    class G,J done;
+```
+
 ---
 
 ## Table of contents
@@ -170,6 +192,31 @@ Open the folder in your editor of choice (`code .` for VS Code, `devenv AppServi
 
 Pick **one** of the three paths below. All three deploy the same compiled output.
 
+### Which path should I pick?
+
+```mermaid
+flowchart TD
+    Q{What do you have<br/>installed?} --> VS[Visual Studio 2022<br/>with ASP.NET workload]
+    Q --> VSC[VS Code +<br/>Azure App Service extension]
+    Q --> CLI[Just a terminal +<br/>Azure CLI]
+
+    VS --> VSDec{App Service<br/>already exists?}
+    VSC --> VSCDec{App Service<br/>already exists?}
+    CLI --> CLIDec{App Service<br/>already exists?}
+
+    VSDec -->|No| A1[Option A1<br/>Create new from VS]
+    VSDec -->|Yes| A2[Option A2<br/>Publish to existing]
+    VSCDec -->|No| B1[Option B1<br/>Create new from VS Code]
+    VSCDec -->|Yes| B2[Option B2<br/>Deploy to existing]
+    CLIDec -->|No| C1[Option C1<br/>az webapp create + deploy]
+    CLIDec -->|Yes| C2[Option C2<br/>az webapp deploy only]
+
+    classDef opt fill:#FFF4CE,stroke:#8A6D00,color:#000;
+    class A1,A2,B1,B2,C1,C2 opt;
+```
+
+> **Tip**: Screenshots for the most-used UI steps live in [`docs/images/`](docs/images/). They are referenced inline below — if you see a blank image box, the screenshot has not been captured yet for your environment.
+
 ---
 
 ### 3.A Deploy from **Visual Studio 2022** (Publish wizard)
@@ -178,11 +225,18 @@ Pick **one** of the three paths below. All three deploy the same compiled output
 
 Use this option if you **do not** already have an App Service to deploy to.
 
+![Visual Studio — right-click Publish](docs/images/vs-publish-rightclick.png)
+
 1. In **Solution Explorer**, right-click the **AppServiceScenarios** project and choose **Publish…**.
+
+![Visual Studio — Publish wizard target Azure](docs/images/vs-publish-azure-target.png)
 2. In the **Publish** wizard, choose **Azure** → **Next**.
 3. Choose **Azure App Service (Windows)** → **Next**.
 4. If prompted, **sign in** with the same Azure account that owns the subscription you want to use.
 5. In the **App Service** dropdown, click the **+ Create new** link (green plus icon) on the right.
+
+   ![Visual Studio — Create new App Service dialog](docs/images/vs-publish-create-appservice.png)
+
 6. Fill in the **Create App Service** dialog:
    - **Name**: `appsvcscenarios-<your-initials>` (must be globally unique — try adding numbers if it's taken)
    - **Subscription**: pick your subscription
@@ -195,6 +249,9 @@ Use this option if you **do not** already have an App Service to deploy to.
 8. Back on the **App Service** step, the new app is now selected. Click **Finish**.
 9. The **Publish** summary page opens. Click **Publish** in the top-right.
 10. Visual Studio builds the project in **Release** mode, packages it, and uploads it. Watch the **Output** window for `Web App was published successfully`.
+
+    ![Visual Studio — Publish summary](docs/images/vs-publish-summary.png)
+
 11. Your default browser opens `https://appsvcscenarios-<your-initials>.azurewebsites.net/`.
 
 #### Option A2: Publish to an existing App Service
@@ -215,6 +272,8 @@ Use this option if the App Service was already created (by you, your team, or a 
 ---
 
 ### 3.B Deploy from **VS Code** (Azure App Service extension)
+
+![VS Code — Azure extension tree view](docs/images/vscode-azure-tree.png)
 
 #### Option B1: Create a new App Service from VS Code
 
@@ -339,6 +398,8 @@ Or open `Default.aspx` and click any button in the **Critical Tests**, **Delays*
 ## Step 6 — Open Diagnose-and-solve problems
 
 This is where the lab pays off — every scenario you ran in **Step 5** is detected by the platform.
+
+![Azure Portal — Diagnose and solve problems blade](docs/images/portal-diagnose-and-solve.png)
 
 1. In the **Azure Portal**, open your App Service.
 2. In the left menu, click **Diagnose and solve problems**.
