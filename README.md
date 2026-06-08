@@ -389,11 +389,16 @@ Use this path when you already have a built `deploy.zip` and just want to push i
 
 #### Prerequisites
 
-- A built **`deploy.zip`** whose contents are the files that should land under `wwwroot` (not a folder _containing_ the files). Build it once with:
-  ```powershell
-  Compress-Archive -Path .\obj\Release\Package\PackageTmp\* -DestinationPath .\deploy.zip -Force
-  ```
-  See Step 2 / Option C1 above for the MSBuild step that produces `obj\Release\Package\PackageTmp\`.
+- A **`deploy.zip`** whose contents are the files that should land under `wwwroot` (not a folder _containing_ the files). You have two choices:
+  - **Download the prebuilt one** (8.25 MB, built from commit `914efb1`) — no MSBuild needed:
+    [**⬇️ deploy.zip (Releases → v1.0.0)**](https://github.com/manju6685/AppServiceScenarios/releases/download/v1.0.0/deploy.zip)
+    ```powershell
+    Invoke-WebRequest -Uri https://github.com/manju6685/AppServiceScenarios/releases/download/v1.0.0/deploy.zip -OutFile .\deploy.zip
+    ```
+  - **Or build it yourself** from a local clone (see Step 2 / Option C1 above for the MSBuild step that produces `obj\Release\Package\PackageTmp\`):
+    ```powershell
+    Compress-Archive -Path .\obj\Release\Package\PackageTmp\* -DestinationPath .\deploy.zip -Force
+    ```
 - An existing App Service.
 - **Basic authentication enabled** on the SCM endpoint, **or** you are signed in with an Entra ID account that has the [`Website Contributor`](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#website-contributor) role on the App Service.
   > New App Services have basic auth disabled by default. To enable it:
@@ -414,6 +419,7 @@ Use this path when you already have a built `deploy.zip` and just want to push i
 3. The page shows a large drop zone labelled **“Drag a Zip file here to deploy”** with the file system contents underneath.
 
 4. **Drag your `deploy.zip` from File Explorer / Finder directly onto the drop zone.** The page immediately starts uploading and unpacking.
+   _(Don't have one built yet? Grab the prebuilt artifact: [**deploy.zip from Releases → v1.0.0**](https://github.com/manju6685/AppServiceScenarios/releases/download/v1.0.0/deploy.zip).)_
 
 5. Watch the inline status indicator. When you see `Deployment successful` (and the JSON status at `https://<your-app-name>.scm.azurewebsites.net/api/deployments/latest` shows `status: 4`), the site is live.
 
