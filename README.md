@@ -215,7 +215,7 @@ flowchart TD
     class A1,A2,B1,B2,C1,C2 opt;
 ```
 
-> **Tip**: Screenshots for the most-used UI steps live in [`docs/images/`](docs/images/). They are referenced inline below — if you see a blank image box, the screenshot has not been captured yet for your environment.
+> **Tip**: The inline screenshots below are hotlinked from the official Microsoft Learn documentation (image © Microsoft, CC-BY 4.0). If you prefer your own screenshots, save PNGs into [`docs/images/`](docs/images/) and update the image URLs in this README.
 
 ---
 
@@ -225,17 +225,26 @@ flowchart TD
 
 Use this option if you **do not** already have an App Service to deploy to.
 
-![Visual Studio — right-click Publish](docs/images/vs-publish-rightclick.png)
+<p align="center">
+  <img src="https://learn.microsoft.com/en-us/visualstudio/deployment/media/visualstudio/right-click-publish.png?view=visualstudio" alt="Visual Studio Solution Explorer right-click menu showing the Publish option" width="520"/><br/>
+  <em>Solution Explorer → right-click → Publish… <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/visualstudio/deployment/quickstart-deploy-aspnet-web-app">source</a>, CC-BY 4.0)</sub></em>
+</p>
 
 1. In **Solution Explorer**, right-click the **AppServiceScenarios** project and choose **Publish…**.
 
-![Visual Studio — Publish wizard target Azure](docs/images/vs-publish-azure-target.png)
+<p align="center">
+  <img src="https://learn.microsoft.com/en-us/azure/app-service/media/quickstart-dotnetcore/vs-publish-target-azure.png" alt="Visual Studio Publish wizard with Azure target selected" width="640"/><br/>
+  <em>Publish wizard — Azure target <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore">source</a>, CC-BY 4.0)</sub></em>
+</p>
 2. In the **Publish** wizard, choose **Azure** → **Next**.
 3. Choose **Azure App Service (Windows)** → **Next**.
 4. If prompted, **sign in** with the same Azure account that owns the subscription you want to use.
 5. In the **App Service** dropdown, click the **+ Create new** link (green plus icon) on the right.
 
-   ![Visual Studio — Create new App Service dialog](docs/images/vs-publish-create-appservice.png)
+   <p align="center">
+     <img src="https://learn.microsoft.com/en-us/azure/app-service/media/quickstart-dotnetcore/publish-new-app-service.png" alt="Visual Studio App Service picker page with + Create new link" width="640"/><br/>
+     <em>App Service picker — click <strong>+ Create new</strong> at the top-right <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore">source</a>, CC-BY 4.0)</sub></em>
+   </p>
 
 6. Fill in the **Create App Service** dialog:
    - **Name**: `appsvcscenarios-<your-initials>` (must be globally unique — try adding numbers if it's taken)
@@ -250,7 +259,10 @@ Use this option if you **do not** already have an App Service to deploy to.
 9. The **Publish** summary page opens. Click **Publish** in the top-right.
 10. Visual Studio builds the project in **Release** mode, packages it, and uploads it. Watch the **Output** window for `Web App was published successfully`.
 
-    ![Visual Studio — Publish summary](docs/images/vs-publish-summary.png)
+    <p align="center">
+      <img src="https://learn.microsoft.com/en-us/azure/app-service/media/quickstart-dotnetcore/web-app-name.png" alt="Visual Studio Create App Service dialog with Name, Resource Group and Hosting Plan fields" width="640"/><br/>
+      <em>Create App Service dialog — fill in Name / Resource group / Hosting plan, then click <strong>Create</strong> <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore">source</a>, CC-BY 4.0)</sub></em>
+    </p>
 
 11. Your default browser opens `https://appsvcscenarios-<your-initials>.azurewebsites.net/`.
 
@@ -264,6 +276,12 @@ Use this option if the App Service was already created (by you, your team, or a 
 4. In the **Subscription** filter, pick the correct subscription.
 5. In the **Resource group** filter, pick the resource group that contains the existing app.
 6. The **App Service** dropdown shows the existing apps. Click the one you want.
+
+   <p align="center">
+     <img src="https://learn.microsoft.com/en-us/azure/app-service/media/quickstart-dotnetcore/publish-new-app-service.png" alt="Visual Studio App Service picker page showing subscription tree with existing apps" width="640"/><br/>
+     <em>Same picker as Option A1 — but this time select an existing app from the tree instead of clicking <strong>+ Create new</strong> <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore">source</a>, CC-BY 4.0)</sub></em>
+   </p>
+
 7. Click **Finish**.
 8. Click **Publish** on the summary screen.
 
@@ -273,7 +291,7 @@ Use this option if the App Service was already created (by you, your team, or a 
 
 ### 3.B Deploy from **VS Code** (Azure App Service extension)
 
-![VS Code — Azure extension tree view](docs/images/vscode-azure-tree.png)
+> Install the [Azure App Service extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azureappservice). After signing in (Command Palette → `Azure: Sign In`) the Azure side-bar shows your subscriptions and a tree of **App Services** you can right-click to deploy to. See [the official walkthrough](https://learn.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore?pivots=development-environment-vscode) for the full UI tour.
 
 #### Option B1: Create a new App Service from VS Code
 
@@ -399,7 +417,10 @@ Or open `Default.aspx` and click any button in the **Critical Tests**, **Delays*
 
 This is where the lab pays off — every scenario you ran in **Step 5** is detected by the platform.
 
-![Azure Portal — Diagnose and solve problems blade](docs/images/portal-diagnose-and-solve.png)
+<p align="center">
+  <img src="https://learn.microsoft.com/en-us/azure/app-service/media/app-service-diagnostics/app-service-diagnostics-homepage.png" alt="Azure Portal App Service Diagnose and solve problems blade" width="800"/><br/>
+  <em>App Service → Diagnose and solve problems <sub>(image © Microsoft, <a href="https://learn.microsoft.com/en-us/azure/app-service/overview-diagnostics">source</a>, CC-BY 4.0)</sub></em>
+</p>
 
 1. In the **Azure Portal**, open your App Service.
 2. In the left menu, click **Diagnose and solve problems**.

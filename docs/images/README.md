@@ -1,20 +1,22 @@
 # Screenshot capture guide
 
-The main [README](../../README.md) references the screenshots in this folder.
-If you would like to contribute screenshots, capture them at the resolutions
-and crops below, save as **PNG** (8-bit RGB), and submit a pull request.
+The main [README](../../README.md) currently uses **hotlinked Microsoft Learn screenshots** (© Microsoft, CC-BY 4.0) for inline images, which means no PNG files are required for the README to render correctly on GitHub.
+
+This folder is reserved for **future overrides** — if you want to replace the Microsoft Learn screenshots with your own (for example to match a different Visual Studio theme, a different region of the Azure Portal, or a specific extension version), capture them as described below and update the corresponding `<img src="...">` URL in `../../README.md` to point at `docs/images/<filename>.png`.
 
 > Tip: keep each PNG under **300 KB**. Crop tightly to the relevant dialog
 > — do not capture the whole desktop.
 
-| Filename                             | What to capture                                                                                  | Where it appears                          |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| `vs-publish-rightclick.png`          | Visual Studio 2022 Solution Explorer with the right-click context menu open, **Publish…** highlighted | Step 3.A → Option A1, step 1              |
-| `vs-publish-azure-target.png`        | The first page of the Publish wizard with **Azure** selected                                     | Step 3.A → Option A1, before step 5       |
-| `vs-publish-create-appservice.png`   | The **Create App Service** dialog with Name / Resource Group / Hosting Plan fields filled in     | Step 3.A → Option A1, step 5              |
-| `vs-publish-summary.png`             | The Publish summary tab showing the **Publish** button and target URL                            | Step 3.A → Option A1, step 10             |
-| `vscode-azure-tree.png`              | VS Code with the Azure extension open in the side bar, **App Services** node expanded            | Step 3.B header                           |
-| `portal-diagnose-and-solve.png`      | Azure Portal showing the **Diagnose and solve problems** blade for an App Service                | Step 6, step 2                            |
+## Suggested filenames
+
+| Filename                             | What to capture                                                                                  | Currently sourced from                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `vs-publish-rightclick.png`          | Visual Studio 2022 Solution Explorer with the right-click context menu open, **Publish…** highlighted | Microsoft Learn — `right-click-publish.png`                  |
+| `vs-publish-azure-target.png`        | The first page of the Publish wizard with **Azure** selected                                     | Microsoft Learn — `vs-publish-target-azure.png`              |
+| `vs-publish-select-appservice.png`   | The **App Service** picker page showing the subscription / resource-group tree and the **+ Create new** link at the top-right | Microsoft Learn — `publish-new-app-service.png`              |
+| `vs-publish-create-appservice.png`   | The **Create App Service** dialog with Name / Resource Group / Hosting Plan fields filled in     | Microsoft Learn — `web-app-name.png`                         |
+| `vscode-azure-tree.png`              | VS Code with the Azure extension open in the side bar, **App Services** node expanded            | _Not hotlinked — link out to the Learn walkthrough instead_  |
+| `portal-diagnose-and-solve.png`      | Azure Portal showing the **Diagnose and solve problems** blade for an App Service                | Microsoft Learn — `app-service-diagnostics-homepage.png`     |
 
 ## How to capture cleanly on Windows
 
