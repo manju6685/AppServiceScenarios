@@ -1,306 +1,437 @@
-# AppServiceScenarios
+# AppServiceScenarios — Hands-on Lab
 
-ASP.NET Web Forms (.NET Framework 4.8.1) test app for **reproducing common Azure
-App Service performance and reliability problems** and verifying that they are
-captured by **Application Insights**.
+> A self-paced lab that takes you from **cloning** a sample ASP.NET application to **deploying** it to **Azure App Service** and **reproducing** real production-style symptoms (slow requests, crashes, high CPU, memory leaks) so you can practice using **Diagnose-and-solve problems**, **Auto Heal**, **Application Insights**, and **Kudu** in a safe environment.
 
-A single page (`Default.aspx`) exposes 32 buttons. Each button triggers one
-realistic failure mode (slow response, high CPU, memory leak, threadpool
-starvation, deadlock, large payload, outbound hang, disk I/O, socket
-exhaustion, LOH pressure, throttled response), generates a batch of synthetic
-HTTP records (100 × 4xx, 100 × 5xx, 100 × slow, mixed bursts), or simulates
-a real customer support pattern (DNS failure, SQL connection-pool exhaustion,
-slow query, Redis timeout, TLS-mismatch, missing config, health-check
-failures, custom-event burst, multi-region availability, instance identity).
-
-It is intentionally **not safe for production** — it crashes the worker, fills
-memory, and exhausts sockets on demand.
+[![Built with: ASP.NET](https://img.shields.io/badge/Built%20with-ASP.NET%20Web%20Forms%204.8.1-512BD4)](https://learn.microsoft.com/aspnet/overview)
+[![Deploys to: Azure App Service](https://img.shields.io/badge/Deploys%20to-Azure%20App%20Service-0089D6)](https://learn.microsoft.com/azure/app-service/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 
 ---
 
-## Why this exists
+## Table of contents
 
-Application Insights' **codeless agent (`ApplicationInsightsAgent_EXTENSION_VERSION = ~2`)**
-on .NET Framework auto-captures inbound GET requests reliably, but does not
-reliably capture:
-
-- Postbacks (`POST /Default.aspx`) under sampling pressure
-- Custom `Trace.*` output unless a TraceListener is wired up
-- Work executed on `Task.Run` background threads
-
-This project demonstrates how to bridge those gaps by emitting telemetry
-explicitly with `TelemetryClient`, so every button produces a row in
-Application Insights regardless of whether the agent saw it.
+1. [What you'll build](#1-what-youll-build)
+2. [Prerequisites](#2-prerequisites)
+3. [Step 1 — Clone the project](#step-1--clone-the-project)
+   - [3.1 Clone in Visual Studio Code](#31-clone-in-visual-studio-code)
+   - [3.2 Clone in Visual Studio 2022](#32-clone-in-visual-studio-2022)
+   - [3.3 Clone from a terminal (any IDE)](#33-clone-from-a-terminal-any-ide)
+4. [Step 2 — Build and run locally](#step-2--build-and-run-locally)
+5. [Step 3 — Deploy to Azure App Service](#step-3--deploy-to-azure-app-service)
+   - [3.A Deploy from **Visual Studio 2022** (Publish wizard)](#3a-deploy-from-visual-studio-2022-publish-wizard)
+     - [Option A1: Create a new App Service](#option-a1-create-a-new-app-service)
+     - [Option A2: Publish to an existing App Service](#option-a2-publish-to-an-existing-app-service)
+   - [3.B Deploy from **VS Code** (Azure App Service extension)](#3b-deploy-from-vs-code-azure-app-service-extension)
+     - [Option B1: Create a new App Service](#option-b1-create-a-new-app-service-from-vs-code)
+     - [Option B2: Deploy to an existing App Service](#option-b2-deploy-to-an-existing-app-service-from-vs-code)
+   - [3.C Deploy from the **Azure CLI** (any OS)](#3c-deploy-from-the-azure-cli-any-os)
+6. [Step 4 — Validate the deployment](#step-4--validate-the-deployment)
+7. [Step 5 — Run the scenarios](#step-5--run-the-scenarios)
+8. [Step 6 — Open Diagnose-and-solve problems](#step-6--open-diagnose-and-solve-problems)
+9. [Optional — Enable Application Insights](#optional--enable-application-insights)
+10. [Clean up resources](#clean-up-resources)
+11. [Troubleshooting](#troubleshooting)
+12. [References](#references)
+13. [License](#license)
 
 ---
 
-## Layout
+## 1. What you'll build
 
-| File | Purpose |
+A small **ASP.NET Web Forms** web application that intentionally exposes **8 failure scenarios** so you can practice Azure App Service diagnostics:
+
+| Page / Button | Symptom |
 |---|---|
-| `Default.aspx` / `Default.aspx.cs` | The 32-button scenario page |
-| `test-customer-buttons.ps1` | Drives the 10 customer-scenario buttons |
-| `Slow10.aspx` / `Slow60.aspx` | Standalone slow endpoints (real `Thread.Sleep`) |
-| `Http500.aspx`, `FastResponse.aspx`, `HealthCheck.aspx` | Ancillary endpoints |
-| `Web.config` | Wires the AI TraceListener so `Trace.*` flows to AI `traces` |
-| `packages.config` | NuGet refs (`Microsoft.ApplicationInsights` 2.22.0, `.TraceListener` 2.22.0) |
-| `test-buttons.ps1` | Drives every button via VIEWSTATE postbacks |
+| `Default.aspx` | Tabbed dashboard with 39 click-handlers across 9 tabs |
+| `NullRef.aspx` | Throws an unhandled `NullReferenceException` (500 + stack trace) |
+| `StackOverflow.aspx?go=1` | Triggers `StackOverflowException` → w3wp crash + restart |
+| `Slow10.aspx` | Sleeps 10 seconds — exercises the slow-request detector |
+| `Slow60.aspx` | Sleeps 60 seconds — contrasts with default 230 s request timeout |
+| `Http500.aspx` | Always returns HTTP 500 — clean Auto-Heal trigger |
+| `FastResponse.aspx` | Sub-50 ms baseline for A/B detector noise |
+| `HealthCheck.aspx` | Returns 200 by default; `?fail=1` returns 500 for Health-Check tests |
+
+All scenarios run safely — they only affect **your own** App Service instance.
 
 ---
 
-## Telemetry strategy
+## 2. Prerequisites
 
-Two helpers in `Default.aspx.cs`:
+You only need the prerequisites that match the path you choose (Visual Studio **or** VS Code). The Azure CLI path works on any OS.
 
-### 1. `TrackInlineButton(buttonName)` — for single-page handlers
+### Common to all paths
 
-An `IDisposable` wrapper that records a `RequestTelemetry` named
-`POST /Default.aspx [ButtonXxx]` with the actual elapsed `Stopwatch` time and
-flushes when disposed. Wrapping the body in `using (TrackInlineButton(...))`
-guarantees a row in AI even if the codeless agent misses the postback.
+- An **Azure subscription** — free tier works ([sign up free](https://azure.microsoft.com/free/))
+- **Git** for Windows / macOS / Linux — [download](https://git-scm.com/downloads)
+- A **GitHub account** (read-only — you can fork later if you want to push changes)
 
-```csharp
-protected void ButtonSlow10_Click(object sender, EventArgs e)
-{
-    using (TrackInlineButton("ButtonSlow10"))
-    {
-        Thread.Sleep(10000);
-        // ...
-    }
-}
-```
+### If you choose Visual Studio (Windows only)
 
-### 2. `EmitSyntheticBatch(page, statusCode, count, durationMs, batchTag)` — for "100×" batch buttons
+- **Visual Studio 2022** (Community / Professional / Enterprise) version **17.8** or later
+- These VS workloads enabled (Visual Studio Installer → Modify):
+  - **ASP.NET and web development**
+  - **Azure development**
+- **.NET Framework 4.8.1 targeting pack** (installed automatically by the ASP.NET workload)
 
-Spawns a `Task.Run` that emits `count` `RequestTelemetry` records (and matching
-`ExceptionTelemetry` for non-2xx/3xx). Each row carries `synthetic=true` and
-`batch=<tag>` custom dimensions so they're easy to filter out of real traffic.
+### If you choose VS Code (Windows / macOS / Linux)
 
-No outbound HTTP is made — the records are written straight to AI's ingestion
-endpoint via `TelemetryClient.TrackRequest`.
+- **Visual Studio Code** — [download](https://code.visualstudio.com/)
+- These VS Code extensions:
+  - **Azure App Service** — `ms-azuretools.vscode-azureappservice`
+  - **Azure Account** — `ms-vscode.azure-account`
+  - **C# Dev Kit** — `ms-dotnettools.csdevkit` (for IntelliSense, not strictly required for deploy)
+- **MSBuild** to compile the .NET Framework project locally:
+  - Windows: install **Visual Studio Build Tools 2022** with the "Web development build tools" component
+  - macOS / Linux: build is best done on a Windows machine or in a Windows GitHub Actions runner. You can still **deploy** the pre-built `bin\` folder from VS Code on any OS.
 
-### TraceListener (`Web.config`)
+### If you choose the Azure CLI
 
-```xml
-<system.diagnostics>
-  <trace autoflush="true">
-    <listeners>
-      <add name="appInsightsListener"
-           type="Microsoft.ApplicationInsights.TraceListener.ApplicationInsightsTraceListener,
-                 Microsoft.ApplicationInsights.TraceListener" />
-    </listeners>
-  </trace>
-</system.diagnostics>
-```
-
-Routes `Trace.TraceInformation` / `Trace.TraceError` to the AI `traces` table.
+- **Azure CLI** 2.55 or later — [install instructions](https://learn.microsoft.com/cli/azure/install-azure-cli)
+- Same MSBuild prerequisites as VS Code if building from source
 
 ---
 
-## The 32 buttons
+## Step 1 — Clone the project
 
-### Real single-page postbacks (instrumented with `TrackInlineButton`)
+**Repository URL:** `https://github.com/manju6685/AppServiceScenarios.git`
 
-| Button | Behaviour | Expected duration |
-|---|---|---|
-| `ButtonSlow10` | `Thread.Sleep(10s)` | 10 s |
-| `ButtonSlow60` | `Thread.Sleep(60s)` | 60 s |
-| `ButtonThreadPoolStarve` | Queues 200 × 60s blocking work items | < 1 s (return), starves for 60 s |
-| `ButtonDeadlock` | Sync-over-async deadlock on a background task | < 1 s (return) |
-| `ButtonMemoryLeak` | +100 MB to a static `List<byte[]>` per click | ~1 s |
-| `ButtonLargePayload` | Streams 10 MB unbuffered | 1–2 s |
-| `ButtonOutboundHang` | `WebRequest` to `192.0.2.1` (RFC5737), 30 s timeout | ~21 s |
-| `ButtonDiskIO` | Writes/deletes 10 × 50 MB files in `%TEMP%` | 2–5 s |
-| `ButtonSocketExhaust` | 200 short-lived `HttpClient` instances → SNAT pressure | < 1 s (return) |
-| `ButtonLOH` | 200 × 1 MB allocations on the Large Object Heap | < 1 s |
-| `ButtonThrottled` | 1 MB streamed over 30 s (1 KB/s) | 30 s |
+### 3.1 Clone in Visual Studio Code
 
-### Synthetic batches (emit 100 records each via `EmitSyntheticBatch`)
+1. Open **VS Code**.
+2. Press `Ctrl+Shift+P` (Windows / Linux) or `Cmd+Shift+P` (macOS) to open the Command Palette.
+3. Type **`Git: Clone`** and press **Enter**.
+4. Paste the repository URL:
+   ```
+   https://github.com/manju6685/AppServiceScenarios.git
+   ```
+   Press **Enter**.
+5. Pick a folder on your machine to clone into (for example `C:\src\` or `~/src/`).
+6. When VS Code asks **"Would you like to open the cloned repository?"**, click **Open**.
+7. If VS Code asks **"Do you trust the authors of the files in this folder?"**, click **Yes, I trust the authors**.
 
-| Button | Records | Duration each |
-|---|---|---|
-| `Button4` (HTTP 500) | 100 × 500 | 120 ms |
-| `Button400` / `Button401` / `Button403` / `Button404` | 100 × 4xx | 50 ms |
-| `Button408` / `Button429` | 100 × 408/429 | 50 ms |
-| `Button502` / `Button503` / `Button504` | 100 × 5xx | 80 ms |
-| `ButtonSlow10x100` | 100 × 200 named `GET /Slow10.aspx` | 10 s |
-| `ButtonSlow60x100` | 100 × 200 named `GET /Slow60.aspx` | 60 s |
-| `ButtonMixedBurst` | 100 mixed (25 each of 500/502/503/504) | 80 ms |
+You now have the project open in VS Code.
 
-> The batch buttons do **not** issue real HTTP. They write `RequestTelemetry`
-> rows directly to AI. To filter them out: `where customDimensions.synthetic != "true"`.
+### 3.2 Clone in Visual Studio 2022
 
-### Worker-recycling (destructive — not wrapped)
+1. Open **Visual Studio 2022**.
+2. On the start window, click **Clone a repository**.
+3. In the **Repository location** field, paste:
+   ```
+   https://github.com/manju6685/AppServiceScenarios.git
+   ```
+4. Choose a **Path** for the local copy (default is `C:\Users\<you>\source\repos\AppServiceScenarios`).
+5. Click **Clone**.
+6. After the clone completes, Visual Studio opens **Solution Explorer**. Double-click `AppServiceScenarios.sln` to load the solution.
+7. Wait for **NuGet** package restore to finish (status bar shows "Restore completed").
 
-These cannot be instrumented with `TrackInlineButton` because `Environment.FailFast`
-and `StackOverflowException` skip `IDisposable.Dispose`:
-
-- `Button1` — recursive call → `StackOverflowException`
-- `Button2` — `while (true)` busy loop → 100% CPU
-- `Button3` — unbounded `byte[]` allocation → `OutOfMemoryException`
-- `ButtonFailFast` — `Environment.FailFast`
-- `ButtonBgCrash` — unhandled exception on a background thread
-
-### Customer-pattern scenarios (10 buttons — "Customer Scenarios" tab)
-
-These reproduce real support patterns seen in production. Each handler is
-wrapped in `TrackInlineButton` and emits **additional telemetry types**
-(dependencies, customEvents, availabilityResults, exceptions) so a single
-click produces a complete trace of the failure as a customer would see it.
-All synthetic rows carry `customDimensions.synthetic = "true"` and a
-`batchTag` ending in `-button` for filtering.
-
-| Button | Status | Telemetry emitted |
-|---|---|---|
-| `ButtonDNSFail` | 500 | `dependencies` (HTTP, target=invalid host, resultCode=DnsFailure) + `exceptions` (`SocketException`) |
-| `ButtonSqlConnectionPoolExhaust` | 500 | 30 × `dependencies` (SQL, target=`sqlserver.contoso-prod.database.windows.net \| OrdersDb`, 30 s, resultCode=-2) + 30 × `exceptions` (`InvalidOperationException` "Timeout expired … max pool size was reached") |
-| `ButtonSqlSlowQuery` | 200 | 1 × `dependencies` (SQL, 35 s, success=true, missing-index `OPTION(MAXDOP 1)` query text) |
-| `ButtonRedisTimeout` | 500 | 5 × `dependencies` (Redis, target=`perfscen-redis.redis.cache.windows.net:6380`, `GET user-session:{id}`, 5 s, resultCode=Timeout) + 5 × `exceptions` (`TimeoutException` with StackExchange.Redis-format message) |
-| `ButtonInstanceIdentity` | 200 | 1 × `customEvents` (`AppServiceScenarios.InstanceIdentity`) with WEBSITE_INSTANCE_ID, REGION_NAME, SKU, machine, PID, processor count, CLR |
-| `ButtonCustomEventBurst` | 200 | 1000 × `customEvents` (`AppServiceScenarios.UserAction`) with random userId/action/latency + 1 metric `AppServiceScenarios.BurstSize` |
-| `ButtonAvailabilityTestEndpoint` | 200 | 10 × `availabilityResults` (`AppServiceScenarios-Availability`) across 5 regions, 8 success / 2 fail (timeout), spread over 5 min |
-| `ButtonHealthCheckFailing` | 200 | 60 × `requests` (`GET /HealthCheck.aspx`, 503, 1 per second, batch=`HealthCheckFailing-button`) + 60 × `exceptions` |
-| `ButtonTls10Only` | 500 | 1 × `dependencies` (HTTP, success=false) + `exceptions` (`AuthenticationException` "A call to SSPI failed … TLS 1.0 disabled by server policy") with `IOException` inner |
-| `ButtonMissingAppSetting` | 500 | 1 × `exceptions` (`NullReferenceException`) with `customDimensions.missingKey = "AppServiceScenarios:RequiredEndpointUrl"` |
-
----
-
-## App Service configuration
-
-To make telemetry behave predictably, the deployment expects these app settings:
-
-```bash
-az webapp config appsettings set -g <rg> -n <app> --settings \
-  APPLICATIONINSIGHTS_CONNECTION_STRING="<your-connstr>" \
-  ApplicationInsightsAgent_EXTENSION_VERSION="~2" \
-  XDT_MicrosoftApplicationInsights_Mode=default \
-  MicrosoftAppInsights_AdaptiveSamplingEnabled=false \
-  MicrosoftAppInsights_DependencyTrackingEnabled=true \
-  MicrosoftAppInsights_RequestTrackingEnabled=true \
-  APPINSIGHTS_PROFILERFEATURE_VERSION=disabled \
-  APPINSIGHTS_SNAPSHOTFEATURE_VERSION=disabled
-```
-
-`MicrosoftAppInsights_AdaptiveSamplingEnabled=false` is the key one — without
-it the codeless agent applies adaptive sampling and drops ~80 % of high-volume
-batches.
-
----
-
-## Build and deploy
+### 3.3 Clone from a terminal (any IDE)
 
 ```powershell
-$msbuild = 'C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe'
-$pubDir  = (Resolve-Path .).Path + '\publish'
-
-& $msbuild .\AppServiceScenarios.csproj `
-  /t:Restore,Rebuild `
-  /p:Configuration=Release `
-  /p:DeployOnBuild=true `
-  /p:WebPublishMethod=FileSystem `
-  /p:DeployTarget=WebPublish `
-  /p:publishUrl=$pubDir
-
-Compress-Archive -Path .\publish\* -DestinationPath .\publish.zip -Force
-az webapp deploy `
-  --resource-group <rg> --name <app> `
-  --src-path .\publish.zip --type zip --async false
+cd C:\src     # or ~/src on macOS/Linux
+git clone https://github.com/manju6685/AppServiceScenarios.git
+cd AppServiceScenarios
 ```
+
+Open the folder in your editor of choice (`code .` for VS Code, `devenv AppServiceScenarios.sln` for Visual Studio).
 
 ---
 
-## Verifying telemetry in App Insights
+## Step 2 — Build and run locally
 
-```kusto
-// Single-page postbacks (last 15 min)
-requests
-| where timestamp > ago(15m) and name has "[Button"
-| summarize cnt=count(),
-            avg_s=round(avg(duration)/1000.0,1),
-            max_s=round(max(duration)/1000.0,1)
-       by name
-| order by max_s desc
-```
+> **Optional but recommended** — confirms the project builds before you deploy.
 
-```kusto
-// Synthetic batches grouped by tag
-requests
-| where timestamp > ago(15m)
-| where tostring(customDimensions.synthetic) == "true"
-| summarize cnt=count() by name, tostring(customDimensions.batch)
-| order by cnt desc
-```
+### In Visual Studio 2022
 
-```kusto
-// Trace listener output
-traces
-| where timestamp > ago(15m) and message has "AppServiceScenarios"
-| order by timestamp desc
-```
+1. In **Solution Explorer**, right-click the **AppServiceScenarios** project and choose **Set as Startup Project**.
+2. Press **F5** (or click the green **▶ IIS Express** button).
+3. Visual Studio launches IIS Express and opens `https://localhost:44300/` in your default browser.
+4. Click any button on the dashboard to confirm the scenarios work. Press **Shift+F5** to stop.
 
-```kusto
-// Customer-scenario dependencies (SQL / Redis / HTTP)
-dependencies
-| where timestamp > ago(30m)
-| where tostring(customDimensions.synthetic) == "true"
-| summarize cnt=count(), avg_ms=round(avg(duration),0) by type, target, success
-| order by cnt desc
-```
+### In VS Code (Windows only — requires MSBuild)
 
-```kusto
-// Custom event burst + instance identity
-customEvents
-| where timestamp > ago(30m) and name startswith "AppServiceScenarios."
-| summarize cnt=count() by name
-```
-
-```kusto
-// Multi-region availability
-availabilityResults
-| where timestamp > ago(30m) and name == "AppServiceScenarios-Availability"
-| summarize cnt=count(), succ=countif(success==true), fail=countif(success==false) by location
-| order by location asc
-```
-
-```kusto
-// Customer-scenario exceptions grouped by scenario
-exceptions
-| where timestamp > ago(30m)
-| where tostring(customDimensions.batchTag) endswith "-button"
-| summarize cnt=count() by type, scenario=tostring(customDimensions.scenario)
-| order by cnt desc
-```
+1. Open the **integrated terminal**: ``Ctrl+` ``.
+2. Restore NuGet packages and build:
+   ```powershell
+   & "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" `
+       AppServiceScenarios.csproj `
+       /t:Restore,Build `
+       /p:Configuration=Release
+   ```
+   (Use **Community** or **BuildTools** instead of **Professional** if that's what you installed.)
+3. The compiled output lands in `bin\`. You can launch IIS Express manually:
+   ```powershell
+   & "C:\Program Files\IIS Express\iisexpress.exe" /path:"$(Resolve-Path .)" /port:8080
+   ```
+4. Browse to `http://localhost:8080/`.
 
 ---
 
-## Driving traffic from PowerShell
+## Step 3 — Deploy to Azure App Service
 
-`test-buttons.ps1` walks every button with VIEWSTATE-aware postbacks. For a
-quick parallel slow-request burst:
+Pick **one** of the three paths below. All three deploy the same compiled output.
 
+---
+
+### 3.A Deploy from **Visual Studio 2022** (Publish wizard)
+
+#### Option A1: Create a new App Service
+
+Use this option if you **do not** already have an App Service to deploy to.
+
+1. In **Solution Explorer**, right-click the **AppServiceScenarios** project and choose **Publish…**.
+2. In the **Publish** wizard, choose **Azure** → **Next**.
+3. Choose **Azure App Service (Windows)** → **Next**.
+4. If prompted, **sign in** with the same Azure account that owns the subscription you want to use.
+5. In the **App Service** dropdown, click the **+ Create new** link (green plus icon) on the right.
+6. Fill in the **Create App Service** dialog:
+   - **Name**: `appsvcscenarios-<your-initials>` (must be globally unique — try adding numbers if it's taken)
+   - **Subscription**: pick your subscription
+   - **Resource group**: click **New…** → name it `rg-appsvcscenarios-lab`
+   - **Hosting Plan**: click **New…**
+     - **Name**: `plan-appsvcscenarios-lab`
+     - **Location**: `East US 2` (or your nearest region)
+     - **Size**: **Free F1** (good enough for the lab) or **Basic B1** (if you want Always On)
+7. Click **Create**. Wait ~30 seconds for the resource to be provisioned.
+8. Back on the **App Service** step, the new app is now selected. Click **Finish**.
+9. The **Publish** summary page opens. Click **Publish** in the top-right.
+10. Visual Studio builds the project in **Release** mode, packages it, and uploads it. Watch the **Output** window for `Web App was published successfully`.
+11. Your default browser opens `https://appsvcscenarios-<your-initials>.azurewebsites.net/`.
+
+#### Option A2: Publish to an existing App Service
+
+Use this option if the App Service was already created (by you, your team, or a prior session).
+
+1. In **Solution Explorer**, right-click **AppServiceScenarios** → **Publish…**.
+2. Choose **Azure** → **Next** → **Azure App Service (Windows)** → **Next**.
+3. Sign in with the Azure account that has access to that App Service.
+4. In the **Subscription** filter, pick the correct subscription.
+5. In the **Resource group** filter, pick the resource group that contains the existing app.
+6. The **App Service** dropdown shows the existing apps. Click the one you want.
+7. Click **Finish**.
+8. Click **Publish** on the summary screen.
+
+> **Tip — overwrite vs. side-by-side**: Publish always overwrites the entire `wwwroot`. To preserve the existing app, deploy to a **deployment slot** instead (Publish wizard → Settings tab → Slot dropdown → pick or create a slot like `staging`, then swap from the Portal when ready).
+
+---
+
+### 3.B Deploy from **VS Code** (Azure App Service extension)
+
+#### Option B1: Create a new App Service from VS Code
+
+1. Open the cloned project in VS Code.
+2. **Build the project** first (VS Code's App Service extension deploys files; it does not invoke MSBuild for Web Forms). In the integrated terminal:
+   ```powershell
+   & "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" `
+       AppServiceScenarios.csproj `
+       /t:Restore,Build `
+       /p:Configuration=Release `
+       /p:DeployOnBuild=true `
+       /p:WebPublishMethod=Package `
+       /p:PackageAsSingleFile=false `
+       /p:PackageLocation=".\obj\Release\Package"
+   ```
+   The deployable files are now in `obj\Release\Package\PackageTmp\`.
+3. Open the **Azure** view (Azure icon in the Activity Bar).
+4. If you're not signed in, click **Sign in to Azure…** and complete the browser sign-in.
+5. Expand your subscription.
+6. Right-click **App Services** → **Create New Web App… (Advanced)**.
+7. Follow the prompts:
+   - **Name**: `appsvcscenarios-<your-initials>` (globally unique)
+   - **Resource Group**: **Create new** → `rg-appsvcscenarios-lab`
+   - **Runtime stack**: **ASP.NET V4.8** (Windows is selected automatically)
+   - **OS**: **Windows**
+   - **Location**: nearest region
+   - **App Service Plan**: **Create new** → `plan-appsvcscenarios-lab`
+   - **Pricing Tier**: **F1 Free** or **B1 Basic**
+   - **Application Insights**: **Skip for now** (you can add it later)
+8. Wait for the App Service to be created (~30 s). VS Code shows a notification when it's done.
+9. **Deploy the build output**:
+   - In the Azure view, right-click your new App Service → **Deploy to Web App…**
+   - When VS Code asks for the folder, pick **`obj\Release\Package\PackageTmp`** (NOT the project root).
+   - VS Code zips the folder and uploads it via Kudu **ZipDeploy**.
+10. When the deploy notification appears with **Browse Website**, click it.
+
+#### Option B2: Deploy to an existing App Service from VS Code
+
+1. Build the project (same MSBuild command as B1 step 2).
+2. Open the **Azure** view, sign in if needed, and expand the subscription containing your app.
+3. Find the existing app under **App Services**. Right-click it → **Deploy to Web App…**.
+4. Pick the **`obj\Release\Package\PackageTmp`** folder when prompted.
+5. VS Code warns "Are you sure you want to deploy to <app>? This will overwrite any previous deployment." Click **Deploy**.
+6. Wait for the upload to finish; click **Browse Website** when prompted.
+
+> **Tip — deploy slots from VS Code**: expand the App Service → **Deployment Slots** node → right-click a slot → **Deploy to Slot…**. Same flow, but the target is the slot URL `https://<app>-<slot>.azurewebsites.net/`.
+
+---
+
+### 3.C Deploy from the **Azure CLI** (any OS)
+
+Use this if you prefer scripting or are deploying from a CI/CD pipeline.
+
+1. Build the project (Windows with MSBuild — see VS Code B1 step 2 above), so files are in `obj\Release\Package\PackageTmp\`.
+2. Create a deployment zip:
+   ```powershell
+   Compress-Archive -Path .\obj\Release\Package\PackageTmp\* -DestinationPath .\deploy.zip -Force
+   ```
+3. Sign in:
+   ```powershell
+   az login
+   az account set --subscription "<your-subscription-id>"
+   ```
+4. **Option C1 — Create new App Service**:
+   ```powershell
+   $rg   = "rg-appsvcscenarios-lab"
+   $loc  = "westus2"
+   $plan = "plan-appsvcscenarios-lab"
+   $app  = "appsvcscenarios-<your-initials>"
+
+   az group create -n $rg -l $loc
+   az appservice plan create -g $rg -n $plan --sku B1 --location $loc
+   az webapp create -g $rg -p $plan -n $app --runtime "ASPNET:V4.8"
+   az webapp deploy -g $rg -n $app --src-path .\deploy.zip --type zip
+   ```
+5. **Option C2 — Deploy to an existing App Service**:
+   ```powershell
+   az webapp deploy -g <existing-rg> -n <existing-app> --src-path .\deploy.zip --type zip
+   ```
+6. Open the site:
+   ```powershell
+   Start-Process "https://$app.azurewebsites.net/"
+   ```
+
+---
+
+## Step 4 — Validate the deployment
+
+After deployment, browse to `https://<your-app>.azurewebsites.net/` and confirm:
+
+| Check | URL | Expected |
+|---|---|---|
+| Default dashboard loads | `/Default.aspx` | HTTP 200, tabbed dashboard renders |
+| Health check returns 200 | `/HealthCheck.aspx` | HTTP 200 |
+| Fast baseline works | `/FastResponse.aspx` | HTTP 200, sub-50 ms response |
+
+You can also confirm via the Azure Portal:
+- **App Service → Overview** — status should be **Running**.
+- **App Service → Metrics** — pick **Http 2xx** to confirm successful requests.
+
+---
+
+## Step 5 — Run the scenarios
+
+Once the site is live, use the dashboard or hit the pages directly to reproduce each symptom:
+
+```text
+https://<your-app>.azurewebsites.net/NullRef.aspx          → unhandled NullReferenceException (500)
+https://<your-app>.azurewebsites.net/StackOverflow.aspx?go=1 → process crash (w3wp recycles)
+https://<your-app>.azurewebsites.net/Slow10.aspx           → 10-second request
+https://<your-app>.azurewebsites.net/Slow60.aspx           → 60-second request
+https://<your-app>.azurewebsites.net/Http500.aspx          → always-500 (Auto-Heal trigger)
+https://<your-app>.azurewebsites.net/HealthCheck.aspx?fail=1 → Health-Check fail mode
+```
+
+Or open `Default.aspx` and click any button in the **Critical Tests**, **Delays**, **HTTP 4xx**, or **HTTP 5xx** tabs.
+
+> **YSOD note:** the project ships with `<customErrors mode="Off"/>` in `Web.config` so you see the full stack trace in the browser. For production, change to `RemoteOnly` or `On`.
+
+---
+
+## Step 6 — Open Diagnose-and-solve problems
+
+This is where the lab pays off — every scenario you ran in **Step 5** is detected by the platform.
+
+1. In the **Azure Portal**, open your App Service.
+2. In the left menu, click **Diagnose and solve problems**.
+3. Click **Availability and Performance**.
+4. Open these detectors and observe what was captured:
+   - **Web App Down** — should be green if you avoided StackOverflow
+   - **HTTP Server Errors** — your `Http500` and `NullRef` hits appear here
+   - **Slow Web App** — your `Slow10` / `Slow60` hits appear here
+   - **High CPU** — only if you ran the `HighCPU` button on the dashboard
+   - **Memory** — only if you ran the `Memory` button
+5. Try the **Diagnostic Tools** tile too:
+   - **Auto Heal** — configure a rule: HTTP 500 count > 5 in 5 min → Recycle Process
+   - **Proactive CPU Monitoring** — configure a 80 % / 60 s threshold and a storage container for the dump
+   - **Memory Dump Collector** — on-demand dump capture
+   - **Network Trace** — on-demand 60-second pcap
+
+---
+
+## Optional — Enable Application Insights
+
+Application Insights gives you code-level telemetry (requests, dependencies, exceptions, live metrics).
+
+1. In the Azure Portal, open your App Service → **Application Insights** (left menu).
+2. Click **Turn on Application Insights** → **Create new resource** → accept defaults → **Apply**.
+3. App Service restarts the worker. Wait ~30 seconds.
+4. Click a few buttons on the dashboard again.
+5. Back in the Portal, open **Application Insights → Live Metrics**. You should see requests and exceptions appear in real time.
+6. Open **Application Insights → Failures**. Click any exception to see the full end-to-end transaction.
+
+---
+
+## Clean up resources
+
+When you're done with the lab, delete the **resource group** to remove the App Service, App Service Plan, and any storage/Application Insights resources you created.
+
+**Azure Portal:**
+1. **Resource groups** → find `rg-appsvcscenarios-lab` → **Delete resource group** → type the name to confirm.
+
+**Azure CLI:**
 ```powershell
-$base = 'https://<app>.azurewebsites.net/Default.aspx'
-$page = Invoke-WebRequest -Uri $base -UseBasicParsing
-$vs   = ([regex]'name="__VIEWSTATE" id="__VIEWSTATE" value="([^"]+)"').Match($page.Content).Groups[1].Value
-$vsg  = ([regex]'name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="([^"]+)"').Match($page.Content).Groups[1].Value
-$ev   = ([regex]'name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="([^"]+)"').Match($page.Content).Groups[1].Value
-$form = @{'__VIEWSTATE'=$vs;'__VIEWSTATEGENERATOR'=$vsg;'__EVENTVALIDATION'=$ev;'ButtonSlow10'='ButtonSlow10'}
-
-1..100 | ForEach-Object -Parallel {
-    Invoke-WebRequest -Uri $using:base -Method Post -Body $using:form -UseBasicParsing -TimeoutSec 60 | Out-Null
-} -ThrottleLimit 100
+az group delete -n rg-appsvcscenarios-lab --yes --no-wait
 ```
+
+> If you deployed to an **existing** App Service, do **not** delete its resource group. Instead delete just the deployment files via Kudu → Debug Console → `cd site\wwwroot` → `rm -r *`.
 
 ---
 
-## Warning
+## Troubleshooting
 
-Most of the buttons on this page are designed to break things:
+| Symptom | Cause | Fix |
+|---|---|---|
+| `403` on deploy from VS Code or VS | Basic auth disabled on App Service | Portal → App Service → Configuration → **General settings** → **SCM Basic Auth Publishing Credentials** → **On**, or use **Microsoft Entra** sign-in (VS 17.10+) |
+| Deploy succeeds but site shows "Your App Service app is up and running" placeholder | App was deployed empty (wrong folder) | Re-deploy and select **`obj\Release\Package\PackageTmp`**, not the project root |
+| `HTTP 500.30 - ANCM In-Process Start Failure` | Wrong runtime stack on App Service | Portal → Configuration → **General settings** → **Stack** = **.NET** → **Version** = **.NET Framework 4.8** |
+| Cannot connect to GitHub via `git clone` | Corporate proxy | Set `git config --global http.proxy http://proxy:port` or download the ZIP from the GitHub Code → Download ZIP button and extract |
+| MSBuild not found in VS Code terminal | Visual Studio Build Tools not installed | Install **Build Tools for Visual Studio 2022** with the "Web development build tools" component |
+| `customErrors` page replaces the YSOD | App was overridden by a transformed Web.config | Confirm `Web.config` still has `<customErrors mode="Off"/>` after deploy; or set `ASPNETCORE_DETAILEDERRORS=true` in **Configuration → Application settings** |
+| Diagnose-and-solve shows nothing | Less than ~10 minutes since the symptom | Detectors poll every 5–10 min; wait and refresh |
 
-- `Button1`, `Button2`, `Button3`, `ButtonFailFast`, `ButtonBgCrash` recycle the App Service worker.
-- `ButtonMemoryLeak` permanently grows process memory until the worker is recycled.
-- `ButtonSocketExhaust` consumes outbound SNAT ports for ~120 s.
-- `ButtonThreadPoolStarve` saturates the threadpool for ~60 s.
+---
 
-Run only against a **disposable** App Service plan / app — never against
-anything serving real traffic.
+## References
+
+### Official Microsoft Learn docs
+- [Azure App Service overview](https://learn.microsoft.com/azure/app-service/overview)
+- [Deploy your app to Azure App Service](https://learn.microsoft.com/azure/app-service/deploy-best-practices)
+- [Deploy from Visual Studio to App Service](https://learn.microsoft.com/visualstudio/deployment/quickstart-deploy-aspnet-web-app)
+- [Deploy from VS Code to App Service](https://learn.microsoft.com/azure/app-service/quickstart-dotnetcore?tabs=net80&pivots=development-environment-vscode)
+- [Azure CLI — `az webapp deploy`](https://learn.microsoft.com/cli/azure/webapp#az-webapp-deploy)
+- [Run from Package (recommended)](https://learn.microsoft.com/azure/app-service/deploy-run-package)
+- [App Service Diagnostics — Diagnose and solve problems](https://learn.microsoft.com/azure/app-service/overview-diagnostics)
+- [Auto Heal](https://learn.microsoft.com/azure/app-service/overview-diagnostics#auto-heal)
+- [Health Check](https://learn.microsoft.com/azure/app-service/monitor-instances-health-check)
+- [Kudu overview](https://learn.microsoft.com/azure/app-service/resources-kudu)
+- [Application Insights for App Service](https://learn.microsoft.com/azure/azure-monitor/app/azure-web-apps)
+
+### Microsoft Learn modules and tutorials
+- [Module: Host a web app with Azure App Service](https://learn.microsoft.com/training/modules/host-a-web-app-with-azure-app-service/)
+- [Module: Stage a web app deployment for testing](https://learn.microsoft.com/training/modules/stage-deploy-app-service-deployment-slots/)
+- [Tutorial: Highly available multi-region app in App Service](https://learn.microsoft.com/azure/app-service/tutorial-multi-region-app)
+- [Tutorial: Isolate backend with VNet integration](https://learn.microsoft.com/azure/app-service/tutorial-networking-isolate-vnet)
+
+### Team blog (deeper dives)
+- [Azure App Service team blog](https://azure.github.io/AppService/)
+- [Robust Apps for the Cloud — best-practice checklist](https://azure.github.io/AppService/2020/05/15/Robust-Apps-for-the-cloud.html)
+- [Resiliency Score Report announcement](https://azure.github.io/AppService/2024/03/05/Resiliency-Score-Report.html)
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) if present, or use this project for any educational / customer-training purpose.
+
+---
+
+> **Maintainer**: this repository is provided as a teaching aid. If you spot something out of date, please open an issue on the GitHub repo.
