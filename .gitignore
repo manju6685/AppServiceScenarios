@@ -22,3 +22,17 @@ packages/
 *.log
 *.tmp
 TestResults/
+
+# Local Web App log dumps (App Service log streaming / FREB / Kudu)
+wa-logs/
+wa-logs*/
+
+# Per-user publish settings and VS service dependency cache
+# (.pubxml.user is already covered by *.user above, but be explicit)
+Properties/PublishProfiles/
+Properties/ServiceDependencies/
+
+# Internal / customer-specific delivery materials
+# Never commit presenter notes that reference customer names
+PWC-*.html
+*-Presenter-Notes.html
