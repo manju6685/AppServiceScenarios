@@ -309,6 +309,84 @@ namespace AppServiceScenarios
             StatusMessage.Text = "100 slow requests (60 seconds each) are being recorded in Application Insights. Check the Performance blade in ~30s.";
         }
 
+        /// <summary>
+        /// Fires N REAL parallel HTTP GETs against /Slow10.aspx using HttpClient.
+        /// Unlike EmitSyntheticBatch (which only writes to App Insights), this generates
+        /// real inbound traffic through IIS — so the App Service auto-heal rule
+        /// (10 requests &gt; 7s in 60s) actually counts them and triggers the
+        /// configured action (DaaS CLR Profiler).
+        /// Fires fire-and-forget on a background Task so the button returns immediately.
+        /// </summary>
+        protected void ButtonSlow10ParallelReal_Click(object sender, EventArgs e)
+        {
+            FireParallelRealRequests("Slow10.aspx", "Slow10-parallel-real");
+            StatusPanel.Visible = true;
+            StatusTitle.Text = "100 Parallel Real Slow Requests Started";
+            StatusMessage.Text = "Firing 100 real parallel HTTP GETs against /Slow10.aspx (~10s each). " +
+                                 "Auto-heal slow-request rule should trigger within ~15s. " +
+                                 "Check Kudu: /api/vfs/data/DaaS/Sessions/ for a new session, or the Auto-Heal History tab in the portal.";
+        }
+
+        /// <summary>
+        /// Fires N REAL parallel HTTP GETs against /Http500.aspx using HttpClient.
+        /// Triggers the auto-heal status-code rule (10 reqs HTTP 500 in 60s).
+        /// </summary>
+        protected void ButtonHttp500ParallelReal_Click(object sender, EventArgs e)
+        {
+            FireParallelRealRequests("Http500.aspx", "Http500-parallel-real");
+            StatusPanel.Visible = true;
+            StatusTitle.Text = "100 Parallel Real HTTP 500 Requests Started";
+            StatusMessage.Text = "Firing 100 real parallel HTTP GETs against /Http500.aspx. " +
+                                 "Auto-heal status-code rule should trigger within ~5s. " +
+                                 "Check Kudu: /api/vfs/data/DaaS/Sessions/ for a new session, or the Auto-Heal History tab in the portal.";
+        }
+
+        /// <summary>
+        /// Shared helper: fires 100 parallel real HTTP GETs against the given page
+        /// on this same app. Runs fire-and-forget on a background Task so the
+        /// button postback returns immediately.
+        /// </summary>
+        private void FireParallelRealRequests(string pageName, string batchTag, int parallelCount = 100)
+        {
+            var baseUrl = Request.Url.GetLeftPart(UriPartial.Authority);
+            var target = $"{baseUrl}/{pageName}";
+
+            Task.Run(async () =>
+            {
+                System.Diagnostics.Trace.TraceInformation(
+                    $"[AppServiceScenarios] {batchTag}: firing {parallelCount} real parallel GETs against {target}");
+
+                var tasks = new Task[parallelCount];
+                for (int i = 0; i < parallelCount; i++)
+                {
+                    int idx = i;
+                    tasks[i] = Task.Run(async () =>
+                    {
+                        var sw = System.Diagnostics.Stopwatch.StartNew();
+                        try
+                        {
+                            using (var resp = await _loadTestHttp.GetAsync(target).ConfigureAwait(false))
+                            {
+                                sw.Stop();
+                                System.Diagnostics.Trace.TraceInformation(
+                                    $"[AppServiceScenarios] {batchTag} #{idx + 1}: HTTP {(int)resp.StatusCode} in {sw.ElapsedMilliseconds}ms");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            sw.Stop();
+                            System.Diagnostics.Trace.TraceError(
+                                $"[AppServiceScenarios] {batchTag} #{idx + 1}: failed after {sw.ElapsedMilliseconds}ms — {ex.Message}");
+                        }
+                    });
+                }
+
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+                System.Diagnostics.Trace.TraceInformation(
+                    $"[AppServiceScenarios] {batchTag}: all {parallelCount} requests completed.");
+            });
+        }
+
         // ============================================================
         // HTTP 4xx / 5xx additional generators
         // ============================================================

@@ -91,6 +91,7 @@
     <Content Include="StackOverflow.aspx" />
     <Content Include="Styles.css" />
     <Content Include="Web.config" />
+    <Content Include="ApplicationInsights.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Default.aspx.cs">
@@ -157,6 +158,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Properties\PublishProfiles\AppServiceScenarios - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\AppServiceScenarios - Web Deploy1.pubxml" />
     <None Include="Properties\PublishProfiles\manjuAppServiceScenarios - Web Deploy.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

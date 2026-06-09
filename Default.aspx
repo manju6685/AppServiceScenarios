@@ -133,6 +133,12 @@
                                 <p>Generates 100 slow requests (60s each) in background</p>
                                 <asp:Button ID="ButtonSlow60x100" runat="server" Text="Execute Test" OnClick="ButtonSlow60x100_Click" CssClass="test-button" />
                             </div>
+                            <div class="test-card">
+                                <div class="card-icon delay">⚡</div>
+                                <h3>100x 10s Parallel (Real HTTP → triggers Auto-Heal)</h3>
+                                <p>Fires 100 real parallel HTTP GETs against /Slow10.aspx. Each takes ~10s. Hits the auto-heal slow-request rule (10 reqs &gt;7s in 60s).</p>
+                                <asp:Button ID="ButtonSlow10ParallelReal" runat="server" Text="Execute Test" OnClick="ButtonSlow10ParallelReal_Click" CssClass="test-button" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -216,6 +222,12 @@
                                 <h3>HTTP 500 (in-process)</h3>
                                 <p>Generates 100 HTTP 500 responses via background calls to Http500.aspx</p>
                                 <asp:Button ID="Button4" runat="server" Text="Execute Test" OnClick="Button4_Click" CssClass="test-button" />
+                            </div>
+                            <div class="test-card">
+                                <div class="card-icon error">⚡</div>
+                                <h3>100x HTTP 500 Parallel (Real HTTP → triggers Auto-Heal)</h3>
+                                <p>Fires 100 real parallel HTTP GETs against /Http500.aspx. Hits the auto-heal status-code rule (10 reqs HTTP 500 in 60s).</p>
+                                <asp:Button ID="ButtonHttp500ParallelReal" runat="server" Text="Execute Test" OnClick="ButtonHttp500ParallelReal_Click" CssClass="test-button" />
                             </div>
                             <div class="test-card">
                                 <div class="card-icon error">📄</div>

@@ -96,6 +96,11 @@ namespace AppServiceScenarios
         protected global::System.Web.UI.WebControls.Button Button4;
 
         /// <summary>
+        /// ButtonHttp500ParallelReal control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Button ButtonHttp500ParallelReal;
+
+        /// <summary>
         /// ButtonSlow10 control.
         /// </summary>
         /// <remarks>
@@ -122,6 +127,15 @@ namespace AppServiceScenarios
         /// ButtonSlow60x100 control.
         /// </summary>
         protected global::System.Web.UI.WebControls.Button ButtonSlow60x100;
+
+        /// <summary>
+        /// ButtonSlow10ParallelReal control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button ButtonSlow10ParallelReal;
 
         /// <summary>
         /// Button400 control.
